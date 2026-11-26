@@ -1,0 +1,38 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  background: #0b0f17;
+}
+
+canvas {
+  display: block;
+}
+
+.hint {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  z-index: 1;
+  margin: 0;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  border: 1px solid #ffffff14;
+  border-radius: 999px;
+  background: #00000055;
+  color: #94a3b8;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+}
