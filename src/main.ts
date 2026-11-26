@@ -65,7 +65,7 @@ scene.add(grid);
 const cubeSize = 1.6;
 const cube = new THREE.Mesh(
   new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize),
-  new THREE.MeshStandardMaterial({ color: '#6366f1', roughness: 0.35, metalness: 0.15 }),
+  new THREE.MeshStandardMaterial({ color: '#6366f1', roughness: 0.35, metalness: 0.15, flatShading:false }),
 );
 cube.position.set(0, cubeSize / 2, 0);
 cube.castShadow = true;
@@ -83,7 +83,7 @@ sphere.castShadow = true;
 scene.add(sphere);
 
 // Physics
-const physics = await createPhysics({ cube, cubeSize, sphere, sphereRadius });
+const physics = await createPhysics({ cube, cubeSize, sphere, sphereRadius, scene });
 
 // Resize
 window.addEventListener('resize', () => {
