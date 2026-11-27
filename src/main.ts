@@ -27,7 +27,7 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 2, 0);
 controls.enableDamping = true;
 controls.minDistance = 4;
-controls.maxDistance = 20;
+controls.maxDistance = 100;
 controls.maxPolarAngle = Math.PI / 2 - 0.02;
 
 // Lights
@@ -62,10 +62,10 @@ grid.position.y = 0.002;
 scene.add(grid);
 
 // Cube
-const cubeSize = 1.6;
+const cubeSize = 1;
 const cube = new THREE.Mesh(
   new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize),
-  new THREE.MeshStandardMaterial({ color: '#6366f1', roughness: 0.35, metalness: 0.15, flatShading:false }),
+  new THREE.MeshStandardMaterial({ color: '#6366f1', roughness: 0.35, metalness: 0.15, flatShading:true, wireframe:false }),
 );
 cube.position.set(0, cubeSize / 2, 0);
 cube.castShadow = true;
@@ -73,17 +73,24 @@ cube.receiveShadow = true;
 scene.add(cube);
 
 // Sphere
-const sphereRadius = 0.6;
+const sphereRadius = 0.1;
 const sphere = new THREE.Mesh(
   new THREE.SphereGeometry(sphereRadius, 48, 32),
   new THREE.MeshStandardMaterial({ color: '#f59e0b', roughness: 0.25, metalness: 0.35 }),
 );
-sphere.position.set(0, 6.2, 0);
+sphere.position.set(0, 10, 0);
 sphere.castShadow = true;
 scene.add(sphere);
 
 // Physics
 const physics = await createPhysics({ cube, cubeSize, sphere, sphereRadius, scene });
+
+// Spawn a ball on Space
+window.addEventListener('keydown', (event) => {
+  if (event.code !== 'Space' || event.repeat) return;
+  event.preventDefault();
+  physics.spawnBall();
+});
 
 // Resize
 window.addEventListener('resize', () => {

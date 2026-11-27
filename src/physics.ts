@@ -1,13 +1,13 @@
 import * as THREE from "three";
-import RAPIER, { Vector3 } from "@dimforge/rapier3d-compat";
+import RAPIER from "@dimforge/rapier3d-compat";
 
 // Rapier runs best with a fixed timestep, so we simulate in 1/60 s slices.
 const fixedStep = 1 / 60;
 const maxDelta = 0.1;
 
 // Mass in kilograms.
-const cubeMass = 4;
-const sphereMass = 1;
+const cubeMass = 100;
+const sphereMass = 2;
 
 interface PhysicsObjects {
   cube: THREE.Mesh;
@@ -49,18 +49,20 @@ export async function createPhysics({
     cubeSize / 2,
   );
   // Particles along X for the soft cube lattice.
-  const softBodyCubeParticleAlongX = 4;
+  const softBodyCubeParticleAlongX = 6;
 
   // Particles along Y for the soft cube lattice.
-  const softBodyCubeParticleAlongY = 4;
+  const softBodyCubeParticleAlongY = 5;
 
   // Particles along Z for the soft cube lattice.
-  const softBodyCubeParticleAlongZ = 4;
+  const softBodyCubeParticleAlongZ = 5;
 
-  const cubeSoftBodyMaterial = RAPIER.SoftBodyMaterial.uniform(150, 1);
-  cubeSoftBodyMaterial.tearForce = 1;
-  cubeSoftBodyMaterial.maxTearsPerStep = 5;
-
+  const cubeSoftBodyMaterial = RAPIER.SoftBodyMaterial.uniform(90, 1);
+  cubeSoftBodyMaterial.tearForce = 10;
+  cubeSoftBodyMaterial.maxTearsPerStep = 2;
+  cubeSoftBodyMaterial.minPiece = 100;
+  // Lighter damping: heavy values only made it sluggish.
+  cubeSoftBodyMaterial.deformationDamping = 1;
   const cubeSoftBodyDesc = RAPIER.SoftBodyDesc.cuboid(
     cubeSoftBodyCenter,
     cubeSoftBodyHalfExtents,
@@ -77,24 +79,40 @@ export async function createPhysics({
         .setFriction(0.8)
         .setRestitution(0.0),
     )
-    .setAdditionalSolverIterations(4);
+    .setLinearDamping(2)
+    .setParticleRadius(0.006)
+    // Fewer extra iterations: cheaper, still stable.
+    .setAdditionalSolverIterations(1);
   const cubeSoftBody = world.createSoftBody(cubeSoftBodyDesc);
 
-  // Sphere: dynamic body, dropped from above the cube.
-  const sphereBody = world.createRigidBody(
-    RAPIER.RigidBodyDesc.dynamic().setTranslation(
-      sphere.position.x,
-      sphere.position.y,
-      sphere.position.z,
-    ),
-  );
-  world.createCollider(
-    RAPIER.ColliderDesc.ball(sphereRadius)
-      .setMass(sphereMass)
-      .setFriction(0.4)
-      .setRestitution(0.9),
-    sphereBody,
-  );
+  // Sphere: spawnable balls.
+  const ballStart = sphere.position.clone();
+  const balls: { body: RAPIER.RigidBody; mesh: THREE.Mesh }[] = [];
+
+  function spawnBall() {
+    const body = world.createRigidBody(
+      RAPIER.RigidBodyDesc.dynamic()
+        .setTranslation(ballStart.x, ballStart.y, ballStart.z)
+    );
+    world.createCollider(
+      RAPIER.ColliderDesc.ball(sphereRadius)
+        .setMass(sphereMass)
+        .setFriction(0.4)
+        .setRestitution(0.0),
+      body,
+    );
+
+    const mesh = balls.length === 0 ? sphere : sphere.clone();
+    mesh.position.copy(ballStart);
+    mesh.quaternion.identity();
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+
+    balls.push({ body, mesh });
+  }
+
+  spawnBall();
   const cubeGeometry = new THREE.BufferGeometry();
   cubeGeometry.setAttribute(
     "position",
@@ -144,7 +162,8 @@ export async function createPhysics({
           geometry.setIndex(
             new THREE.BufferAttribute(pieaceIndices.slice(0), 1),
           );
-          geometry.computeVertexNormals();
+          // Flat shading doesn't use vertex normals.
+          // geometry.computeVertexNormals();
           const mesh = new THREE.Mesh(geometry, cube.material);
           mesh.castShadow = true;
           mesh.receiveShadow = true;
@@ -155,7 +174,9 @@ export async function createPhysics({
     }
 
     // Copy the simulated transforms onto the meshes that render them.
-    copyTransform(sphereBody, sphere);
+    for (const ball of balls) {
+      copyTransform(ball.body, ball.mesh);
+    }
 
     const vertices = cubeSoftBody.meshVertices(0);
     const indices = cubeSoftBody.meshIndices(0);
@@ -175,7 +196,8 @@ export async function createPhysics({
       positions.array.set(vertices);
       positions.needsUpdate = true;
     }
-    cube.geometry.computeVertexNormals();
+    // Flat shading doesn't use vertex normals.
+    // cube.geometry.computeVertexNormals();
 
     for (const piece of pieceMeshes) {
       const vertx = piece.body.meshVertices(0);
@@ -195,11 +217,12 @@ export async function createPhysics({
         posi.array.set(vertx);
         posi.needsUpdate = true;
       }
-      piece.geometry.computeVertexNormals();
+      // Flat shading doesn't use vertex normals.
+      // piece.geometry.computeVertexNormals();
     }
   }
 
-  return { update };
+  return { update, spawnBall };
 }
 
 function copyTransform(body: RAPIER.RigidBody, mesh: THREE.Mesh) {
